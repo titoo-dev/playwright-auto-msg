@@ -3,14 +3,19 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test",
+    "test:single": "playwright test send-message.spec.ts --project=chromium",
+    "test:multi": "cross-env USERS_JSON_FILE=users.json playwright test send-message.spec.ts --project=chromium"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.1",
   "devDependencies": {
     "@playwright/test": "^1.53.0",
-    "@types/node": "^24.0.1"
+    "@types/node": "^24.0.1",
+    "cross-env": "^7.0.3"
   },
   "dependencies": {
     "dotenv": "^16.5.0"

@@ -1,9 +1,20 @@
-import { test, chromium, Page, BrowserContext, Locator } from '@playwright/test';
+import { test, chromium, Page, BrowserContext, Locator, expect } from '@playwright/test';
 import path from 'path';
+import fs from 'fs';
+import dotenv from 'dotenv';
+import { exec } from 'child_process';
+
+// Load environment variables
+dotenv.config();
 
 interface LoginCredentials {
   email: string;
   password: string;
+}
+
+interface UserMessage {
+  userUrl: string;
+  message: string;
 }
 
 interface MessageSelectors {
@@ -52,6 +63,40 @@ async function getCredentials(): Promise<LoginCredentials> {
   };
 }
 
+async function getUsersFromJson(): Promise<UserMessage[]> {
+  const jsonFilePath = process.env.USERS_JSON_FILE;
+  
+  if (!jsonFilePath) {
+    // Fallback to single user for backwards compatibility
+    return [{
+      userUrl: 'https://www.facebook.com/rado.nomenjanahary.161',
+      message: 'test 49 lines'
+    }];
+  }
+
+  try {
+    const jsonContent = fs.readFileSync(jsonFilePath, 'utf8');
+    const users: UserMessage[] = JSON.parse(jsonContent);
+    
+    if (!Array.isArray(users)) {
+      throw new Error('Le fichier JSON doit contenir un tableau d\'objets');
+    }
+
+    // Validate JSON structure
+    for (const user of users) {
+      if (!user.userUrl || !user.message) {
+        throw new Error('Chaque objet doit avoir les propriétés "userUrl" et "message"');
+      }
+    }
+
+    console.log(`📄 ${users.length} utilisateur(s) chargé(s) depuis ${jsonFilePath}`);
+    return users;
+  } catch (error) {
+    console.error('❌ Erreur lors du chargement du fichier JSON:', (error as Error).message);
+    throw error;
+  }
+}
+
 async function isUserLoggedIn(page: Page): Promise<boolean> {
   return await page.locator('[data-testid="royal_login_form"]').count() === 0;
 }
@@ -92,11 +137,8 @@ async function performLogin(page: Page, credentials: LoginCredentials): Promise<
     ]);
     
     const loginSuccessful = await isUserLoggedIn(page);
-    
-    if (loginSuccessful) {
+      if (loginSuccessful) {
       console.log('✅ Connexion réussie !');
-      await page.goto('https://www.facebook.com/rado.nomenjanahary.161');
-      console.log('📄 Profil chargé');
       return true;
     } else {
       console.log('❌ Échec de connexion - vérifiez vos identifiants');
@@ -116,85 +158,79 @@ async function performLogin(page: Page, credentials: LoginCredentials): Promise<
   }
 }
 
-async function sendMessageIfLoggedIn(page: Page): Promise<void> {
-  const messageButton = await findVisibleElement(page, SELECTORS.messageButton);
-  if (!messageButton) {
-    console.log('❌ Bouton Message non trouvé sur ce profil');
-    console.log('💡 Ce profil ne permet peut-être pas les messages directs');
-    return;
-  }
-
-  await messageButton.click();
-  console.log('🔘 Bouton Message cliqué');
+async function sendMessageToProfile(page: Page, userMessage: UserMessage): Promise<void> {
   
-  await page.waitForTimeout(2000);
-  
-  const textArea = await findVisibleElement(page, SELECTORS.textArea, 3000);
-  if (!textArea) {
-    console.log('❌ Zone de texte non trouvée');
-    return;
-  }
-
-  // Uncomment and modify the message as needed
-  // await textArea.fill('test message');
-  // console.log('✍️ Message saisi');
-  
-  await page.waitForTimeout(1000);
-  
-  const sendButton = await findVisibleElement(page, SELECTORS.sendButton);
-  if (sendButton) {
-    await sendButton.click();
-    console.log('✅ Message envoyé !');
-  } else {
-    console.log('❌ Bouton Envoyer non trouvé - essai avec Entrée...');
-    await textArea.press('Enter');
-    console.log('⌨️ Touche Entrée pressée');
-  }
-}
-
-async function sendMessageToProfile(page: Page): Promise<void> {
-  if (!(await isUserLoggedIn(page))) {
-    console.log('❌ Utilisateur non connecté');
-    return;
-  }
-
-  console.log('💬 Tentative d\'envoi de message...');
+  console.log(`💬 Tentative d'envoi de message à: ${userMessage.userUrl}`);
   
   try {
-    await sendMessageIfLoggedIn(page);
+    await page.goto(userMessage.userUrl);
+    console.log('📄 Profil chargé');
+    
+    await page.waitForURL(userMessage.userUrl, { timeout: 10000 });
+    await sendQuickMessageIfAlreadyLoggedIn(page, userMessage.message);
+
+    await page.waitForTimeout(2000); // Wait for message to send
   } catch (error) {
     console.log('❌ Erreur lors de l\'envoi du message:', (error as Error).message);
   }
-  
-  await page.waitForTimeout(3000);
 }
 
-async function sendQuickMessageIfAlreadyLoggedIn(page: Page): Promise<void> {
-  console.log('✅ Déjà connecté à Facebook');
+async function sendQuickMessageIfAlreadyLoggedIn(page: Page, message: string = 'test 49 lines'): Promise<void> {
   await page.getByRole('button', { name: 'Message', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Message' }).fill('test 49 lines');
+  await page.getByRole('textbox', { name: 'Message' }).fill(message);
   await page.getByRole('button', { name: 'Press Enter to send' }).click();
 }
 
 test('Ouvrir Facebook avec profil existant et connexion auto', async () => {
   const credentials = await getCredentials();
+  const users = await getUsersFromJson();
   const browser = await createBrowserContext();
   const page = browser.pages()[0] || await browser.newPage();
 
-  await page.goto('https://www.facebook.com/rado.nomenjanahary.161');
+  console.log(`🚀 Début de l'automatisation pour ${users.length} utilisateur(s)`);
 
-  const loggedIn = await isUserLoggedIn(page);
-  
-  if (loggedIn) {
-    await sendQuickMessageIfAlreadyLoggedIn(page);
-  } else {
-    const loginSuccess = await performLogin(page, credentials);
-    if (!loginSuccess) {
-      await browser.close();
-      return;
+  try {
+    // Check if already logged in by going to Facebook first
+    await page.goto('https://www.facebook.com');
+    const loggedIn = await isUserLoggedIn(page);
+    
+    if (!loggedIn) {
+      console.log('🔐 Connexion nécessaire...');
+      const loginSuccess = await performLogin(page, credentials);
+      if (!loginSuccess) {
+        console.log('❌ Impossible de se connecter - arrêt du processus');
+        await browser.close();
+        return;
+      }
+    } else {
+      console.log('✅ Déjà connecté à Facebook');
     }
+
+    // Send messages to all users
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      console.log(`\n📤 Envoi ${i + 1}/${users.length} - ${user.userUrl}`);
+      
+      try {
+        await sendMessageToProfile(page, user);
+        console.log(`✅ Message envoyé avec succès à l'utilisateur ${i + 1}`);
+        
+        // Wait between messages to avoid rate limiting
+        if (i < users.length - 1) {
+          console.log('⏳ Attente avant le prochain message...');
+          await page.getByRole('button', { name: 'Close chat' }).click();
+        }
+      } catch (error) {
+        console.log(`❌ Erreur pour l'utilisateur ${i + 1}:`, (error as Error).message);
+        // Continue with next user even if one fails
+      }
+    }
+
+    console.log(`\n🎉 Processus terminé - ${users.length} utilisateur(s) traité(s)`);
+
+  } catch (error) {
+    console.log('❌ Erreur générale:', (error as Error).message);
+  } finally {
+    await browser.close();
   }
-  
-  await sendMessageToProfile(page);
-  await browser.close();
 });
