@@ -21,36 +21,9 @@ jobs:
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Prepare users JSON file
-      run: |
-        if [ "${{ github.event.inputs.users_json_file }}" != "" ]; then
-          # Check if input looks like JSON content (starts with [ or {)
-          input_value="${{ github.event.inputs.users_json_file }}"
-          if [[ "$input_value" =~ ^[[:space:]]*[\[\{] ]]; then
-            echo "📝 Detected JSON content, creating users.json file..."
-            echo '${{ github.event.inputs.users_json_file }}' > users.json
-            echo "✅ users.json file created with provided JSON content"
-            export USERS_JSON_FILE="users.json"
-          else
-            echo "📄 Using file path: $input_value"
-            export USERS_JSON_FILE="$input_value"
-          fi
-        else
-          echo "📄 Using default users.json file"
-          export USERS_JSON_FILE="users.json"
-        fi
+      run: echo "${{ github.event.inputs.users_json_file }}" > users.json
     - name: Run Playwright tests
-      run: |
-        if [ "${{ github.event.inputs.users_json_file }}" != "" ]; then
-          input_value="${{ github.event.inputs.users_json_file }}"
-          if [[ "$input_value" =~ ^[[:space:]]*[\[\{] ]]; then
-            export USERS_JSON_FILE="users.json"
-          else
-            export USERS_JSON_FILE="$input_value"
-          fi
-        else
-          export USERS_JSON_FILE="users.json"
-        fi
-        pnpm run test:multi
+      run: pnpm run test:multi
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
