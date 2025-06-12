@@ -4,8 +4,8 @@ on:
     inputs:
       users_json_file:
         description: 'Path to users JSON file OR JSON string content'
-        required: false
-        default: 'users.json'
+        required: true
+        default: '[{"userUrl": "https://www.facebook.com/rado.nomenjanahary.161","message": "message from github action"}]'
         type: string
 jobs:
   test:
