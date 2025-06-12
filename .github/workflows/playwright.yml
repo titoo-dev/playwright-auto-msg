@@ -50,7 +50,7 @@ jobs:
         else
           export USERS_JSON_FILE="users.json"
         fi
-        pnpm exec playwright test
+        pnpm run test:multi
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
