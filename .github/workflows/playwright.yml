@@ -21,7 +21,7 @@ jobs:
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Prepare users JSON file
-      run: echo "${{ github.event.inputs.users_json_file }}" > $GITHUB_WORKSPACE/users.json
+      run: echo '${{ github.event.inputs.users_json_file }}' > $GITHUB_WORKSPACE/users.json
     - name: Run Playwright tests
       run: pnpm run test:multi
     - uses: actions/upload-artifact@v4
