@@ -9,3 +9,7 @@ node_modules/
 /tests/chrome-profile/
 
 .env
+
+dist/
+
+users.json

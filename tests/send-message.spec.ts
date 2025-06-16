@@ -4,12 +4,10 @@ import {
   Page,
   BrowserContext,
   Locator,
-  expect,
 } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { exec } from "child_process";
 
 // Load environment variables
 dotenv.config();
@@ -58,7 +56,7 @@ const SELECTORS: MessageSelectors = {
 async function createBrowserContext(): Promise<BrowserContext> {
   const userDataDir = path.join(__dirname, "chrome-profile");
   return await chromium.launchPersistentContext(userDataDir, {
-    headless: true,
+    headless: false,
     channel: "chrome",
     permissions: [],
   });
