@@ -11,8 +11,6 @@ services:
       - ./.env:/app/.env:ro
     networks:
       - app-network
-    depends_on:
-      - nginx
 
   nginx:
     image: nginx:alpine
@@ -29,6 +27,12 @@ services:
       - app-network
     depends_on:
       - app
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://app:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   app-network:
