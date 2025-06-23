@@ -10,6 +10,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.get('/health', (req, res) => {
+	res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Endpoint to trigger pnpm run test:multi
 app.post("/api/trigger-test", (req, res) => {
   console.log("Triggering pnpm run test:multi...");
